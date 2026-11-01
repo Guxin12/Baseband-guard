@@ -245,7 +245,7 @@ static struct security_hook_list bb_hooks[] = {
 static int __init bbg_init(void)
 {
 	security_add_hooks_compat(bb_hooks, ARRAY_SIZE(bb_hooks)); // init lsm hooks and print version notice
-	pr_info("baseband_guard power by https://t.me/qdykernel\n");
+	pr_info("baseband_guard power by https://t.me/qdykernel && Guxin12(Melt-Delta)\n");
 	pr_info("baseband_guard repo: %s", __stringify(BBG_REPO));
 	pr_info("baseband_guard version: %s", __stringify(BBG_VERSION));
 	return 0;
@@ -263,8 +263,8 @@ DEFINE_LSM(baseband_guard) = {
 };
 #endif
 
-MODULE_DESCRIPTION("protect All Block & Power by TG@qdykernel");
-MODULE_AUTHOR("秋刀鱼 & https://t.me/qdykernel");
+MODULE_DESCRIPTION("protect All Block & Power by TG@qdykernel && Guxin12(Melt-Delta)");
+MODULE_AUTHOR("秋刀鱼 && https://t.me/qdykernel && Guxin12(Melt-Delta)");
 MODULE_LICENSE("GPL v2");
 
 

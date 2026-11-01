@@ -17,6 +17,8 @@ static const char * const allowlist_names[] = {
 	"vendor_boot", "vendor_kernel_boot",
 #endif
 	"dtbo",
+	"vendor_dlkm",
+	
 	"userdata", "cache", "metadata", "misc",
 	"vbmeta", "vbmeta_system", "vbmeta_vendor",
 #ifndef CONFIG_BBG_BLOCK_RECOVERY

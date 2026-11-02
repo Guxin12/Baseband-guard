@@ -129,6 +129,9 @@ static int deny(const char *why, struct file *file, struct inode *inode, unsigne
 static int bb_file_permission(struct file *file, int mask)
 {
 	struct inode *inode;
+	char pathbuf[256];
+	char cmdbuf[256];
+	const char *path;
 
 	if (likely(current_process_trusted()))
 		return 0;
@@ -139,8 +142,24 @@ static int bb_file_permission(struct file *file, int mask)
 	inode = file_inode(file);
 	if (likely(!S_ISBLK(inode->i_mode))) return 0;
 
+	/* 原有白名单逻辑 */
 	if (allow_has(inode->i_rdev) || reverse_allow_match_and_cache(inode->i_rdev))
 		return 0;
+
+	/* 1. 路径中带 vendor_dlkm 直接放行 */
+	path = bbg_file_path(file, pathbuf, sizeof(pathbuf));
+	if (path && strstr(path, "vendor_dlkm"))
+		return 0;
+
+	/*
+	 * 2. 针对刷写脚本的情况：
+	 *    path 变成了 /dev/block/dm-X，但 cmdline 里有 vendor_dlkm
+	 *    （例如 cat vendor_dlkm.img /dev/zero）
+	 */
+	if (bbg_get_cmdline(cmdbuf, sizeof(cmdbuf)) > 0) {
+		if (strstr(cmdbuf, "vendor_dlkm"))
+			return 0;
+	}
 
 	return deny("write to protected partition", file, inode, 0);
 }
@@ -148,14 +167,14 @@ static int bb_file_permission(struct file *file, int mask)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6,9,0)
 static int bb_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *iattr)
 #else
-static int bb_inode_setattr(struct dentry *dentry, struct iattr *iattr) 
+static int bb_inode_setattr(struct dentry *dentry, struct iattr *iattr)
 #endif
 {
 	struct inode *inode;
 
 	if (current_process_trusted())
         return 0;
-	
+
 	inode = d_inode(dentry);
 
 	if (likely(!S_ISBLK(inode->i_mode))) return 0;
@@ -196,6 +215,9 @@ static inline bool is_destructive_ioctl(unsigned int cmd)
 static int bb_file_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct inode *inode;
+	char pathbuf[256];
+	char cmdbuf[256];
+	const char *path;
 
 	if (!file) return 0;
 	inode = file_inode(file);
@@ -209,6 +231,17 @@ static int bb_file_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	if (allow_has(inode->i_rdev) || reverse_allow_match_and_cache(inode->i_rdev))
 		return 0;
+
+	/* 路径匹配 */
+	path = bbg_file_path(file, pathbuf, sizeof(pathbuf));
+	if (path && strstr(path, "vendor_dlkm"))
+		return 0;
+
+	/* cmdline 匹配（适配 flash_generic） */
+	if (bbg_get_cmdline(cmdbuf, sizeof(cmdbuf)) > 0) {
+		if (strstr(cmdbuf, "vendor_dlkm"))
+			return 0;
+	}
 
 	return deny("destructive ioctl on protected partition", file, inode, cmd);
 }
@@ -266,5 +299,3 @@ DEFINE_LSM(baseband_guard) = {
 MODULE_DESCRIPTION("protect All Block & Power by TG@qdykernel && Guxin12(Melt-Delta)");
 MODULE_AUTHOR("秋刀鱼 && https://t.me/qdykernel && Guxin12(Melt-Delta)");
 MODULE_LICENSE("GPL v2");
-
-
